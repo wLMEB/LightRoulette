@@ -18,7 +18,7 @@
 // Which pin on the Arduino is connected to the NeoPixels?
 // On a Trinket or Gemma we suggest changing this to 1:
 #define LED_PIN    6
-#define BUTTON_PIN 13
+#define BUTTON_PIN 2
 
 // How many NeoPixels are attached to the Arduino?
 #define LED_COUNT 12
@@ -44,8 +44,19 @@ Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
   uint32_t yellow = strip.Color(255,255,0);
   uint32_t colorArr[6]={red,blue,green,tale,pink,yellow};
   uint32_t stripColor[12] = {};
+  int colorPointer = 0;
+  volatile int button_state;
+  volatile bool spinning = false;
   
-  uint8_t button_prev;
+void buttonInterrupt(){
+  button_state = digitalRead(BUTTON_PIN);
+  if (button_state == LOW){
+    //clearColor();
+    Serial.print("button pressed");
+    spinning = true;
+  }
+}
+  
 void setup() {
   // These lines are specifically to support the Adafruit Trinket 5V 16 MHz.
   // Any other board, you can remove this part (but no harm leaving it):
@@ -56,16 +67,16 @@ void setup() {
   randomSeed(analogRead(0));
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.show();            // Turn OFF all pixels ASAP
-  strip.setBrightness(10); // Set BRIGHTNESS to about 1/5 (max = 255)
+  strip.setBrightness(15); // Set BRIGHTNESS to about 1/5 (max = 255)
   for(int i = 0; i<strip.numPixels(); i++) {
     uint32_t current = colorArr[random(6)];
     strip.setPixelColor(i, current);    
     stripColor[i]= current;
-    strip.show();
    }
+  
   Serial.begin(9600);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
-  button_prev = digitalRead(BUTTON_PIN);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN),buttonInterrupt,CHANGE);   
   
 }
 
@@ -73,34 +84,45 @@ void setup() {
 // loop() function -- runs repeatedly as long as board is on ---------------
 
 void loop() {
-  
-  uint8_t button_cur = digitalRead(BUTTON_PIN);
-  Serial.println(button_cur);
-  if(button_cur == LOW && button_prev==HIGH ){
-    clearColor();
-    Serial.print("button pressed");
-    delay(1000);
+  //Serial.println(spinning);
+  if(spinning == false){
+   for(int i = 0; i<strip.numPixels(); i++) {
+    strip.setPixelColor(i,  stripColor[i]);    
+   }
+   strip.show();
   }else{
-   //strip.show();
-   button_prev = digitalRead(BUTTON_PIN);
-    delay(100);
-  
+    Serial.println(spinning);
+
+    Serial.print("starting index: ");
+      Serial.println(colorPointer);
+    motion(5, 100); // base rotation and light up time interval
+    motion(10, 50);
+    motion(5, 100);
+    motion(3, 150);
+    loopinng();
   }
-    
-   
-  
-  // Fill along the length of the strip in various colors...
-//  colorWipe(strip.Color(255,   0,   0), 50); // Red
-//  colorWipe(strip.Color(  0, 255,   0), 50); // Green
-//  colorWipe(strip.Color(  0,   0, 255), 50); // Blue
 
-  // Do a theater marquee effect in various colors...
-//  theaterChase(strip.Color(127, 127, 127), 50); // White, half brightness
-//  theaterChase(strip.Color(127,   0,   0), 50); // Red, half brightness
-//  theaterChase(strip.Color(  0,   0, 127), 50); // Blue, half brightness
+  }
 
-//  rainbow(10);             // Flowing rainbow cycle along the whole strip
-//  theaterChaseRainbow(50); // Rainbow-enhanced theaterChase variant
+void motion(int base, int time){
+   int rotations;
+    for(int r = 0; r< base+random(base*2,base*4); r++){ //number of rotations
+      Serial.print("rotations: ");
+      Serial.println(r);
+      Serial.print("starting index: ");
+      Serial.println(colorPointer);
+      for(int i = colorPointer ; i<colorPointer+12; i++) { //setting up strips
+      strip.setPixelColor(i%12,  stripColor[(i+r)%12]);    
+      }
+      rotations = r;
+      strip.show();
+      delay(time);
+    }
+    colorPointer = (colorPointer+rotations)%12;
+}
+  void loopinng(){
+    while(1){
+    }
   
 }
 
